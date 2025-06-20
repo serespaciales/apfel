@@ -3,39 +3,90 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Manzanas en Dominio Público</title>
+  <title>Manzanas Dominio Público</title>
   <style>
     html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background: #000;
-      overflow: hidden;
-    }
-    #apple {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      background: #000; overflow: hidden;
     }
     #message {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: #fff;
-      font-size: 1.2rem;
-      z-index: 1;
-      text-align: center;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      color: #fff; font-size: 1.2rem;
+      text-align: center; z-index: 1;
+    }
+    #apple {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: none;
     }
   </style>
 </head>
 <body>
   <div id="message">Cargando…</div>
   <img id="apple" alt="Manzana dominio público">
-  <script src="script.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const messageEl = document.getElementById('message');
+    const imgEl     = document.getElementById('apple');
+
+    async function loadApple() {
+      try {
+        messageEl.textContent = 'Cargando…';
+        imgEl.style.display = 'none';
+
+        // Preparamos la consulta a la API de Commons
+        const params = new URLSearchParams({
+          action:    'query',
+          generator: 'search',
+          gsrsearch: 'apple OR manzana',
+          gsrlimit:  '20',
+          prop:      'imageinfo',
+          iiprop:    'url|extmetadata',
+          format:    'json',
+          origin:    '*'
+        });
+        const url = 'https://commons.wikimedia.org/w/api.php?' + params;
+
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const json = await resp.json();
+
+        const pages = Object.values(json.query?.pages || {});
+        const publicDomain = pages.filter(p => {
+          const md  = p.imageinfo?.[0]?.extmetadata;
+          const lic = md?.LicenseShortName?.value || '';
+          return /public domain|cc0/i.test(lic);
+        });
+
+        if (!publicDomain.length) {
+          throw new Error('No se encontraron manzanas en dominio público.');
+        }
+
+        // Selección aleatoria
+        const pick = publicDomain[
+          Math.floor(Math.random() * publicDomain.length)
+        ];
+        const imgUrl = pick.imageinfo[0].url;
+        const title  = pick.title || 'Manzana dominio público';
+
+        imgEl.src = imgUrl;
+        imgEl.alt = title;
+        imgEl.style.display = 'block';
+        messageEl.style.display = 'none';
+
+      } catch (err) {
+        console.error('Error al cargar la imagen:', err);
+        messageEl.textContent = 'Error al cargar la imagen.';
+      }
+    }
+
+    loadApple();
+  });
+  </script>
 </body>
 </html>
